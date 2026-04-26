@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Citas Barbería</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<h1>💈 Sistema de Citas - Barbería</h1>
+
+<div class="contenedor">
+
+    <div class="seccion">
+        <h2>Reservar cita</h2>
+    </div>
+
+    <form id="formCita">
+
+        <label>Nombre del cliente:</label>
+        <input type="text" id="clienteNombre" required>
+
+        <label>Email:</label>
+        <input type="email" id="clienteEmail" required>
+
+        <label>Teléfono:</label>
+        <input type="text" id="clienteTelefono">
+
+        <label>Fecha y hora:</label>
+        <input type="datetime-local" id="fechaHora" required>
+
+        <label>Duración en minutos:</label>
+        <input type="number" id="duracionMin" placeholder="30">
+
+        <button type="submit">Reservar</button>
+
+    </form>
+
+    <p id="mensaje"></p>
+
+    <hr>
+
+    <div class="seccion">
+        <h2>Lista de citas</h2>
+    </div>
+
+    <div id="listaCitas"></div>
+
+</div>
+
+<script>
+    const API_URL = "/api/appointments";
+
+    document.getElementById("formCita").addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        const cita = {
+            clienteNombre: document.getElementById("clienteNombre").value,
+            clienteEmail: document.getElementById("clienteEmail").value,
+            clienteTelefono: document.getElementById("clienteTelefono").value,
+            fechaHora: document.getElementById("fechaHora").value,
+            duracionMin: document.getElementById("duracionMin").value
+                ? parseInt(document.getElementById("duracionMin").value)
+                : null
+        };
+
+        try {
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(cita)
+            });
+
+            const data = await response.text();
+
+            if (response.ok) {
+                document.getElementById("mensaje").innerText = "Cita reservada correctamente";
+                document.getElementById("formCita").reset();
+                listarCitas();
+            } else {
+                document.getElementById("mensaje").innerText = "Error: " + data;
+            }
+
+        } catch (error) {
+            document.getElementById("mensaje").innerText = "Error al conectar con la API";
+        }
+    });
+
+    async function listarCitas() {
+        try {
+            const response = await fetch(API_URL);
+            const citas = await response.json();
+
+            const lista = document.getElementById("listaCitas");
+            lista.innerHTML = "";
+
+            if (citas.length === 0) {
+                lista.innerHTML = "<p class='sin-citas'>No hay citas registradas.</p>";
+                return;
+            }
+
+            citas.forEach(cita => {
+                const div = document.createElement("div");
+                div.className = "cita-card";
+
+                div.innerHTML = `
+                    <p>
+                        <strong>ID:</strong> ${cita.id}<br>
+                        <strong>Cliente:</strong> ${cita.clienteNombre}<br>
+                        <strong>Email:</strong> ${cita.clienteEmail}<br>
+                        <strong>Teléfono:</strong> ${cita.clienteTelefono || "No indicado"}<br>
+                        <strong>Fecha:</strong> ${cita.fechaHora}<br>
+                        <strong>Duración:</strong> ${cita.duracionMin} min<br>
+                        <strong>Estado:</strong> ${cita.estado}<br>
+
+                        ${cita.estado === "RESERVADA"
+                            ? `<button class="cancelar" onclick="cancelarCita(${cita.id})">Cancelar</button>`
+                            : ""}
+                    </p>
+                `;
+
+                lista.appendChild(div);
+            });
+
+        } catch (error) {
+            document.getElementById("mensaje").innerText = "Error al listar las citas";
+        }
+    }
+
+    async function cancelarCita(id) {
+        try {
+            const response = await fetch(`${API_URL}/${id}`, {
+                method: "DELETE"
+            });
+
+            const data = await response.text();
+
+            if (response.ok) {
+                document.getElementById("mensaje").innerText = "Cita cancelada correctamente";
+                listarCitas();
+            } else {
+                document.getElementById("mensaje").innerText = "Error: " + data;
+            }
+
+        } catch (error) {
+            document.getElementById("mensaje").innerText = "Error al cancelar la cita";
+        }
+    }
+
+    listarCitas();
+</script>
+
+</body>
+</html>
